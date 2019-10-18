@@ -9,7 +9,7 @@ This project is based on the awesome prometheus docker-compose stack by [Brian C
   	- [Test Alerts](#test-alerts)
   - [Security Considerations](#security-considerations)
   	- [Production Security](#production-security)
-  - [odo](#todo)
+  - [Todo](#todo)
 
 # Pre-requisites
 Before we get started installing the Prometheus stack. Ensure you install the latest version of docker and [docker swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/) on your Docker host machine. Docker Swarm is installed automatically when using Docker for Mac or Docker for Windows.
@@ -113,4 +113,3 @@ Here are just a couple security considerations for this stack to help you get st
 - Troubleshoot no connections from substrate nodes to telemetry-backend. Compatability with 1.x vs 2.x?
 - substrate-telemetry-exporter is hard-coded to look for telemetry-backend on localhost:8080. Docker Swarm v3.x does not support network_mode to share a container network between two containers. Explore other networking options to share ports over localhost (host mode), or submit PR to [parameterize substrate-telemetry host in the exporter](https://github.com/w3f/substrate-telemetry-exporter/blob/323411e5df7c21335d55e61f10b4a0f15975ad3d/src/lib/client.js#L11).
 - Once telemetry-backend and substrate-telemetry-exporter issues are addressed, build a grafana dashboard for the exporter
-- 
