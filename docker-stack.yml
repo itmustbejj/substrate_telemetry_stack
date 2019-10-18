@@ -1,0 +1,186 @@
+version: '3.7'
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+networks:
+  monitor-net:
+  telemetry:
+
+services:
+  substrate-a:
+    command:
+      #- "-lws=debug"
+      - "--chain"
+      - "/substrate/config/chain_custom.json"
+      - "--key"
+      - "//Alice"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000001"
+      - "--port"
+      - "30333"
+      - "--ws-external"
+      - "--rpc-external"
+      - "--telemetry-url"
+      - "ws://telemetry-backend:1024" 
+      - "--validator"
+      - "-d"
+      - "/tmp/data_a"
+    image: parity/substrate:latest-v1.0
+    ports:
+      - "30333:30333"
+      - "9933:9933"
+      - "9944:9944"
+    volumes:
+      - ./config:/substrate/config/
+
+  substrate-b:
+    command:
+      #- "-lws=debug"
+      - "--chain"
+      - "/substrate/config/chain_custom.json"
+      - "--key"
+      - "//Bob"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000002"
+      - "--port"
+      - "30333"
+      - "--ws-external"
+      - "--rpc-external"
+      - "--telemetry-url"
+      - "ws://telemetry-backend:1024" 
+      - "--validator"
+      - "-d"
+      - "/tmp/data_b"
+      - "--bootnodes"
+      - "/dns4/substrate-a/tcp/30333/p2p/QmQZ8TjTqeDj3ciwr93EJ95hxfDsb9pEYDizUAbWpigtQN"
+    image: parity/substrate:latest-v1.0
+    ports:
+      - "30334:30333"
+      - "9934:9933"
+      - "9945:9944"
+    volumes:
+      - ./config:/substrate/config/
+    depends_on:
+      - "substrate-a"
+
+  telemetry-backend:
+    image: itmustbejj/telemetry-backend:latest
+    command: yarn start:backend
+    environment:
+      - TELEMETRY_SERVER=1024
+      - FEED_SERVER=8080
+    ports:
+      - 8080:8080
+      - 1024:1024
+    depends_on:
+      - "substrate-a"
+      - "substrate-b"
+  telemetry-exporter:
+    image: web3f/substrate-telemetry-exporter:latest
+    depends_on:
+      - "substrate-a"
+      - "telemetry-backend"
+    network_mode: "service:telemetry-backend"
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - 9090:9090
+    depends_on:
+      - cadvisor
+    networks:
+      - monitor-net
+    deploy:
+      placement:
+        constraints:
+          - node.role==manager
+      restart_policy:
+        condition: on-failure
+
+  node-exporter:
+    image: prom/node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command: 
+      - '--path.procfs=/host/proc' 
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    networks:
+      - monitor-net
+    deploy:
+      mode: global
+      restart_policy:
+          condition: on-failure
+
+  alertmanager:
+    image: prom/alertmanager
+    ports:
+      - 9093:9093
+    volumes:
+      - "./alertmanager/:/etc/alertmanager/"
+    networks:
+      - monitor-net
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    deploy:
+      placement:
+        constraints:
+           - node.role==manager
+      restart_policy:
+        condition: on-failure    
+
+  cadvisor:
+    image: google/cadvisor
+    command:
+      - "-port=8098"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 8089:8089
+    networks:
+      - monitor-net
+    deploy:
+      mode: global
+      restart_policy:
+          condition: on-failure
+
+  grafana:
+    image: grafana/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./grafana/config.monitoring
+    networks:
+      - monitor-net
+    user: "104"
+    deploy:
+      placement:
+        constraints:
+          - node.role==manager
+      restart_policy:
+        condition: on-failure
+
