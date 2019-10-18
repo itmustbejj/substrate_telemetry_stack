@@ -24,7 +24,7 @@ Once configurations are done let's start it up. From the /prometheus project dir
     $ HOSTNAME=$(hostname) docker stack deploy -c docker-stack.yml substack
 
 
-That's it the `docker stack deploy' command deploys the entire Grafana and Prometheus stack automagically to the Docker Swarm. By default cAdvisor and node-exporter are set to Global deployment which means they will propogate to every docker host attached to the Swarm.
+That's it the `docker stack deploy` command deploys the entire Grafana and Prometheus stack automagically to the Docker Swarm. By default cAdvisor and node-exporter are set to Global deployment which means they will propogate to every docker host attached to the Swarm.
 
 The Grafana Dashboard is now accessible via: `http://<Host IP Address>:3000` for example http://192.168.10.1:3000
 
@@ -88,15 +88,13 @@ Since this is a template to get started Prometheus and Alerting services are exp
 
 ## Login to Grafana and Visualize Metrics
 
-Grafana is an Open Source visualization tool for the metrics collected with Prometheus. Next, open Grafana to view the Traefik Dashboards.
+Grafana is an Open Source visualization tool for the metrics collected with Prometheus.
 **Note: Firefox doesn't properly work with the below URLS please use Chrome**
 
     http://grafana.localhost
 
 Username: admin
 Password: foobar
-
-Open the Traefik Dashboard and select the different backends available
 
 **Note: Upper right-hand corner of Grafana switch the default 1 hour time range down to 5 minutes. Refresh a couple times and you should see data start flowing**
 
